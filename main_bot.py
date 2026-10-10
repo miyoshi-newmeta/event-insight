@@ -266,6 +266,35 @@ def create_bot():
             f"[{scope}/{audience}/{window}]\n{md}",
         ))
 
+    # --- /lt_marker ---
+    # LT登壇の区切りを外部イベントDBの「LT会場」ストリームに注入する(Discordには表示しない)。
+    # 文字起こしと同じ discordChannelId に載せることで、受け側が1本のストリーム内で
+    # `[lt-marker/...]` 行を境に登壇者ごとの発話を切り出せる。
+    @bot.tree.command(name="lt_marker", description="LT登壇の開始/終了の仕切りを記録用サーバーへ送る(運営用)")
+    @app_commands.describe(
+        action="start=登壇開始 / end=登壇終了",
+        number="登壇の通し番号 (1,2,3,…)",
+        label="登壇者名・タイトルなど自由記述 (start時に推奨)",
+    )
+    @app_commands.choices(action=[
+        app_commands.Choice(name="開始", value="start"),
+        app_commands.Choice(name="終了", value="end"),
+    ])
+    async def lt_marker_cmd(interaction: discord.Interaction, action: str,
+                            number: int, label: str = ""):
+        cfg: EventConfig = bot.event_config
+        vc_id = cfg.voice_channel_id("lt")
+        if not vc_id:
+            await interaction.response.send_message("⚠️ voice.lt が未設定です", ephemeral=True)
+            return
+        vc = bot.get_channel(vc_id)
+        content = f"[lt-marker/{action}/{number}]" + (f" {label}" if label else "")
+        eventdb.fire(eventdb.post_comment(
+            vc_id, vc.name if vc else "LT会場",
+            interaction.user.id, interaction.user.display_name, content,
+        ))
+        await interaction.response.send_message(f"📍 仕切りを送信しました: `{content}`", ephemeral=True)
+
     # --- /status ---
     @bot.tree.command(name="status", description="データ収集状況を表示する")
     async def status_cmd(interaction: discord.Interaction):
