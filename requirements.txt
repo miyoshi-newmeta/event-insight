@@ -1,0 +1,9 @@
+discord.py[voice]>=2.4
+discord-ext-voice-recv
+davey
+numpy
+websockets
+aiohttp
+openai>=1.0
+python-dotenv
+certifi

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>コメントオーバーレイ</title>
+<style>
+  :root {
+    --font-size: 42px;
+    --duration: 9s;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    /* 背景モード: 既定=ダーク / ?transparent=1=透過(OBSブラウザソース用)
+       / ?chroma=1=グリーンバック / ?chroma=blue=ブルーバック (キーヤー用) */
+    background: #0b0e14;
+  }
+  body.transparent { background: transparent; }
+  body.chroma-green { background: #00ff00; }
+  body.chroma-blue  { background: #0000ff; }
+
+  #stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .comment {
+    position: absolute;
+    left: 100vw;
+    white-space: nowrap;
+    font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font-size: var(--font-size);
+    font-weight: 700;
+    color: #fff;
+    text-shadow:
+      0 0 4px rgba(0,0,0,.9),
+      2px 2px 2px rgba(0,0,0,.8),
+      -1px -1px 2px rgba(0,0,0,.8);
+    will-change: transform;
+    animation: flow var(--duration) linear forwards;
+    pointer-events: none;
+  }
+  @keyframes flow {
+    from { transform: translateX(0); }
+    to   { transform: translateX(calc(-100vw - 100%)); }
+  }
+
+  /* --- サイドコメントモード (?mode=side) : YouTube Liveチャット風 --- */
+  body.side #stage { display: none; }
+  #side {
+    display: none;
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: var(--side-width, 400px);
+    box-sizing: border-box;
+    padding: 16px 18px 20px;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 10px;
+    overflow: hidden;
+    background: rgba(8, 10, 18, .78);
+    border-left: 2px solid rgba(62, 230, 255, .35);
+    font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  body.side #side { display: flex; }
+  /* 透過・クロマ時はパネル背景を消して文字だけ載せる */
+  body.side.transparent #side,
+  body.side.chroma-green #side,
+  body.side.chroma-blue #side { background: transparent; border-left: none; }
+  .side-item {
+    font-size: var(--side-font, 24px);
+    line-height: 1.5;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0,0,0,.9), 1px 1px 2px rgba(0,0,0,.8);
+    overflow-wrap: anywhere;
+    animation: side-in .25s ease-out;
+  }
+  .side-item .name {
+    font-weight: 700;
+    margin-right: .5em;
+    font-size: .85em;
+  }
+  @keyframes side-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #status {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    font-family: sans-serif;
+    font-size: 13px;
+    color: rgba(255,255,255,.35);
+  }
+  #status.connected { color: rgba(120,220,120,.5); }
+  /* クロマキー時は映像に乗らないよう常に隠す */
+  body.chroma-green #status, body.chroma-blue #status { display: none; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="side"></div>
+<div id="status">接続中…</div>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  if (params.get("transparent") === "1") document.body.classList.add("transparent");
+  // サイドコメントモード: ?mode=side (&width=400 &font=24)
+  const sideMode = params.get("mode") === "side";
+  if (sideMode) {
+    document.body.classList.add("side");
+    if (params.get("width")) document.documentElement.style.setProperty("--side-width", params.get("width") + "px");
+    if (params.get("font")) document.documentElement.style.setProperty("--side-font", params.get("font") + "px");
+  }
+  if (params.get("font")) document.documentElement.style.setProperty("--font-size", params.get("font") + "px");
+  if (params.get("speed")) document.documentElement.style.setProperty("--duration", params.get("speed") + "s");
+
+  // クロマキーモード: ?chroma=1 (グリーン) / ?chroma=blue (ブルー)
+  const chroma = params.get("chroma");
+  if (chroma === "1" || chroma === "green") document.body.classList.add("chroma-green");
+  else if (chroma === "blue") document.body.classList.add("chroma-blue");
+
+  const stage = document.getElementById("stage");
+  const side = document.getElementById("side");
+  const statusEl = document.getElementById("status");
+
+  const SIDE_MAX = 60;  // サイドモードで保持する最大件数
+  function addSideComment(user, text) {
+    const el = document.createElement("div");
+    el.className = "side-item";
+    if (user && user !== "test") {
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = user;
+      name.style.color = COLORS[hashColor(user)];
+      el.appendChild(name);
+    }
+    el.appendChild(document.createTextNode(text));
+    side.appendChild(el);
+    while (side.children.length > SIDE_MAX) side.removeChild(side.firstChild);
+  }
+  // 同じ人は毎回同じ色になるように名前から色を決める
+  function hashColor(name) {
+    let h = 0;
+    for (const ch of name) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    return h % COLORS.length;
+  }
+
+  let COLORS = ["#ffffff", "#ffe08a", "#8ad2ff", "#a0ffa0", "#ffb0d8", "#d8b0ff", "#ffd0a0"];
+  // キー色と同系のコメント色は一緒に抜けてしまうのでパレットから外す
+  if (document.body.classList.contains("chroma-green")) {
+    COLORS = COLORS.filter(c => c !== "#a0ffa0");
+  } else if (document.body.classList.contains("chroma-blue")) {
+    COLORS = COLORS.filter(c => c !== "#8ad2ff" && c !== "#d8b0ff");
+  }
+
+  // レーン管理: 直近使用時刻が最も古いレーンに流す
+  const LANES = 12;
+  const laneLastUsed = new Array(LANES).fill(0);
+
+  function pickLane() {
+    let best = 0;
+    for (let i = 1; i < LANES; i++) {
+      if (laneLastUsed[i] < laneLastUsed[best]) best = i;
+    }
+    laneLastUsed[best] = Date.now();
+    return best;
+  }
+
+  function addComment(text) {
+    const el = document.createElement("div");
+    el.className = "comment";
+    el.textContent = text;
+    el.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+    const lane = pickLane();
+    const laneHeight = window.innerHeight / LANES;
+    el.style.top = (lane * laneHeight + laneHeight * 0.1) + "px";
+
+    // 長いコメントほど少し速く流して詰まりを避ける
+    const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--duration"));
+    const dur = Math.max(base - Math.min(text.length / 20, 3), 4);
+    el.style.animationDuration = dur + "s";
+
+    el.addEventListener("animationend", () => el.remove());
+    stage.appendChild(el);
+  }
+
+  // --- WebSocket (自動再接続) ---
+  let retryMs = 1000;
+  function connect() {
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onopen = () => {
+      retryMs = 1000;
+      statusEl.textContent = "● 接続中";
+      statusEl.classList.add("connected");
+      setTimeout(() => { statusEl.style.display = "none"; }, 3000);
+    };
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "comment" && msg.text) {
+          if (sideMode) addSideComment(msg.user, msg.text);
+          else addComment(msg.text);
+        }
+      } catch (_) {}
+    };
+    ws.onclose = () => {
+      statusEl.style.display = "";
+      statusEl.textContent = "再接続中…";
+      statusEl.classList.remove("connected");
+      setTimeout(connect, retryMs);
+      retryMs = Math.min(retryMs * 2, 10000);
+    };
+    ws.onerror = () => ws.close();
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

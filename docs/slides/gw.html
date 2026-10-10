@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>GW進行スライド</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #140822;
+    --bg1: #2c0f4e;
+    --bg2: #51187d;
+    --ink: #f4efff;
+    --muted: #cbbde6;
+    --faint: #9b8abc;
+    --cyan: #3ee6ff;
+    --lav: #c9a7ff;
+    --mint: #52f2b8;
+    --glow: 0 0 1.6vh rgba(190,140,255,.85), 0 0 5vh rgba(140,70,255,.45);
+    --glow-cyan: 0 0 1.4vh rgba(62,230,255,.9), 0 0 4.5vh rgba(62,230,255,.4);
+    --card: rgba(255,255,255,.055);
+    --edge: rgba(201,167,255,.28);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    color: var(--ink);
+    font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
+    background:
+      radial-gradient(130vh 130vh at 85% -20%, rgba(170,40,210,.33), transparent 60%),
+      radial-gradient(110vh 110vh at -10% 110%, rgba(90,30,180,.5), transparent 60%),
+      linear-gradient(135deg, var(--bg0) 0%, var(--bg1) 48%, var(--bg2) 100%);
+  }
+  .dots {
+    position: fixed; left: 0; top: 0; width: 18vw; height: 100vh; pointer-events: none;
+    background-image: radial-gradient(circle, rgba(255,255,255,.16) .45vh, transparent .55vh);
+    background-size: 2.6vh 2.6vh;
+    -webkit-mask-image: linear-gradient(to right, #000, transparent 85%);
+            mask-image: linear-gradient(to right, #000, transparent 85%);
+    opacity: .5;
+  }
+
+  .slide {
+    position: relative; z-index: 1;
+    width: 100vw; height: 100vh;
+    padding: 3.8vh 5vw 5.5vh;
+    display: none; flex-direction: column;
+  }
+  .slide.active { display: flex; }
+
+  .head { display: flex; justify-content: space-between; align-items: baseline; }
+  .tag {
+    font-family: "Orbitron", sans-serif;
+    font-size: 2.2vh; font-weight: 700; letter-spacing: .22em;
+    color: var(--cyan); text-shadow: var(--glow-cyan);
+    border: 1px solid rgba(62,230,255,.5); border-radius: 999px;
+    padding: .8vh 1.8vw;
+    box-shadow: 0 0 2vh rgba(62,230,255,.2), inset 0 0 2vh rgba(62,230,255,.08);
+  }
+  .wordmark {
+    font-family: "Orbitron", sans-serif;
+    font-size: 2vh; font-weight: 700; letter-spacing: .3em;
+    color: var(--faint);
+  }
+
+  /* 進行ステッパー(現在地) */
+  .stepper { display: flex; align-items: center; gap: .55vw; margin-top: 2.4vh; }
+  .stp {
+    font-size: 1.85vh; font-weight: 700; white-space: nowrap;
+    padding: .8vh 1vw; border-radius: 999px;
+    border: 1px solid var(--edge); color: var(--muted); background: var(--card);
+  }
+  .stp.rest-chip { padding: .8vh .7vw; }
+  .stp.done { color: #6d5e8f; border-color: rgba(201,167,255,.14); background: rgba(255,255,255,.025); }
+  .stp.done::before { content: "✓ "; }
+  .stp.now {
+    color: #0b0618; background: var(--cyan); border-color: var(--cyan);
+    font-size: 2vh; font-weight: 900;
+    box-shadow: 0 0 2.4vh rgba(62,230,255,.6);
+  }
+  .stp.now::before { content: "▶ "; }
+  .sep { color: #5d4d80; font-size: 1.8vh; }
+
+  h1 {
+    font-size: 5.2vh; font-weight: 900; margin: 1.8vh 0 .6vh; line-height: 1.3;
+    text-shadow: var(--glow);
+  }
+  .timebar { display: flex; align-items: baseline; gap: 1.4vw; }
+  .time-pill {
+    display: inline-block;
+    font-family: "Orbitron", "Noto Sans JP", sans-serif;
+    font-size: 2.4vh; font-weight: 700;
+    color: var(--cyan); text-shadow: var(--glow-cyan);
+    border: .35vh solid rgba(62,230,255,.55);
+    border-radius: 999px; padding: .5vh 1.8vw;
+    box-shadow: 0 0 2vh rgba(62,230,255,.2);
+  }
+  .time-pill .jp { font-family: "Noto Sans JP", sans-serif; font-weight: 900; }
+  .time-note { font-size: 1.9vh; color: var(--faint); }
+
+  /* タイムテーブル */
+  .tt { flex: 1; margin-top: 2.2vh; display: flex; flex-direction: column; gap: .9vh; }
+  .tt-row {
+    display: flex; align-items: center; gap: 2vw;
+    background: var(--card); border: 1px solid rgba(201,167,255,.14);
+    border-left: .5vw solid rgba(201,167,255,.3);
+    border-radius: 1vh;
+    padding: 1.3vh 1.8vw; font-size: 2.65vh;
+  }
+  .tt-row.round { border-left-color: var(--cyan); background: rgba(62,230,255,.07); }
+  .tt-row.rest  { border-left-color: var(--mint); }
+  .tt-row .clock { font-family: "Orbitron", Menlo, monospace; font-size: 2.1vh; font-weight: 700; min-width: 13vw; color: var(--lav); }
+  .tt-row .label { font-weight: 700; flex: 1; }
+  .tt-row.round .label { font-weight: 900; }
+  .tt-row .dur { color: var(--muted); font-weight: 500; }
+
+  /* ラウンド本文 */
+  .round-body { flex: 1; display: flex; gap: 2.5vw; margin-top: 2.6vh; }
+  .col {
+    flex: 1; background: var(--card);
+    border: 1px solid var(--edge); border-radius: 1.6vh;
+    padding: 2.6vh 1.8vw;
+  }
+  .col h3 {
+    font-size: 2.5vh; font-weight: 900; color: var(--cyan);
+    text-shadow: var(--glow-cyan);
+    border-bottom: 1px solid rgba(62,230,255,.4);
+    padding-bottom: .9vh; margin-bottom: 1.8vh;
+  }
+  .col ul { list-style: none; font-size: 2.5vh; line-height: 1.85; color: var(--muted); }
+  .col ul li { margin-bottom: 1.4vh; padding-left: 1.3em; text-indent: -1.3em; font-weight: 500; }
+  .col ul li::before { content: "▸ "; color: var(--cyan); }
+  .col ul li b { color: var(--ink); }
+
+  .goal {
+    margin-top: 1.8vh; font-size: 2.9vh; font-weight: 900;
+    text-align: center; text-shadow: var(--glow);
+  }
+  .goal .em { color: var(--cyan); text-shadow: var(--glow-cyan); }
+
+  .notes {
+    margin-top: 1.6vh; padding-top: 1.4vh;
+    border-top: 1px solid rgba(201,167,255,.18);
+    display: flex; gap: 2.6vw; font-size: 1.95vh; color: var(--faint);
+  }
+  .notes b { color: var(--muted); }
+
+  .foot {
+    position: fixed; bottom: 2vh; left: 5vw; right: 5vw;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 1.7vh; color: var(--faint); letter-spacing: .08em;
+  }
+  .pageno {
+    font-family: "Orbitron", sans-serif;
+    color: var(--cyan); font-weight: 900; font-size: 2.2vh;
+    text-shadow: var(--glow-cyan);
+  }
+  .nav-hint { position: fixed; right: 1.2vw; top: 1vh; font-size: 1.5vh; color: #4a3d68; }
+</style>
+</head>
+<body>
+<div class="dots"></div>
+
+<!-- 1: タイムテーブル -->
+<section class="slide active" data-step="-1">
+  <div class="head">
+    <div class="tag">GROUP WORK</div>
+    <div class="wordmark">AI PRACTICE FORUM</div>
+  </div>
+  <h1>グループワーク タイムテーブル</h1>
+  <div class="timebar">
+    <span class="time-pill">14:55 – 16:25 <span class="jp">(90分)</span></span>
+    <span class="time-note">※ 各時刻は目安です。当日の進行で前後します</span>
+  </div>
+  <div class="tt">
+    <div class="tt-row"><span class="clock">14:55ごろ</span><span class="label">オープニング / 役割決め(タイムキーパー・メモ係・マイク係)</span><span class="dur">10分</span></div>
+    <div class="tt-row round"><span class="clock">15:05ごろ</span><span class="label">ラウンド1「私のAI活用のリアル」</span><span class="dur">約20分</span></div>
+    <div class="tt-row rest"><span class="clock">15:25ごろ</span><span class="label">⏳ インターバル(記録 / 第2ラウンド説明)</span><span class="dur">5分</span></div>
+    <div class="tt-row round"><span class="clock">15:30ごろ</span><span class="label">ラウンド2「私が感じているAIの壁」</span><span class="dur">約20分</span></div>
+    <div class="tt-row rest"><span class="clock">15:50ごろ</span><span class="label">⏳ インターバル(記録 / 第3ラウンド説明)</span><span class="dur">5分</span></div>
+    <div class="tt-row round"><span class="clock">15:55ごろ</span><span class="label">ラウンド3「私のAI活用スモールステップ」(最後に投稿)</span><span class="dur">約20分</span></div>
+    <div class="tt-row round"><span class="clock">16:15ごろ</span><span class="label">🎤 全体共有(各グループ代表 1分)</span><span class="dur">約8分</span></div>
+    <div class="tt-row"><span class="clock">16:23ごろ</span><span class="label">締め</span><span class="dur">2分</span></div>
+  </div>
+  <div class="notes">
+    <span>🎙 マイク係のPCが会話を自動で文字起こし</span>
+    <span>📝 気づきは <b># メモ-グループ1〜6</b> へ</span>
+  </div>
+  <div class="foot"><span>AI PRACTICE FORUM ~ AI活用のリアルを語る場 ~</span><span class="pageno">GW</span></div>
+</section>
+
+<!-- 1.5: 役割決め -->
+<section class="slide" data-step="0">
+  <div class="head">
+    <div class="tag">SETUP</div>
+    <div class="wordmark">AI PRACTICE FORUM</div>
+  </div>
+  <h1>3つの係を決めてください</h1>
+  <div class="timebar">
+    <span class="time-pill"><span class="jp">各グループ 3名</span></span>
+    <span class="time-note">決まったグループから準備スタート</span>
+  </div>
+  <div class="round-body">
+    <div class="col">
+      <h3>⏱ タイムキーパー</h3>
+      <ul>
+        <li>時間を見ながら進行をサポート</li>
+        <li><b>一人に偏らず全員が話せる</b>ように回す</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>📝 メモ係</h3>
+      <ul>
+        <li>話の要点・役立ちポイントを <b># メモ-グループN</b> に投稿</li>
+        <li>全部書き取らなくてOK</li>
+        <li>リンクの書き込みも歓迎</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>🎙 マイク調整</h3>
+      <ul>
+        <li>自分のPCで <b>🔊グループN</b> に参加し<b>マイクをオン</b></li>
+        <li><b>テーブル中央</b>にPCを置き全員の声を拾う</li>
+        <li>声を出して<b>緑色に点灯</b>すれば準備OK</li>
+      </ul>
+    </div>
+  </div>
+  <div class="goal">🎯 3名が決まって、マイク係のPCが🔊グループNに入ったら準備完了</div>
+  <div class="notes">
+    <span>💡 係以外の方は何の準備もいりません</span>
+    <span>📝 気づきは誰でも # メモ-グループN に書き込みOK</span>
+  </div>
+  <div class="foot"><span>AI PRACTICE FORUM ~ AI活用のリアルを語る場 ~</span><span class="pageno">SETUP</span></div>
+</section>
+
+<!-- 2: ラウンド1 -->
+<section class="slide" data-step="1">
+  <div class="head">
+    <div class="tag">ROUND 1 / 3</div>
+    <div class="wordmark">AI PRACTICE FORUM</div>
+  </div>
+  <h1>私のAI活用のリアル</h1>
+  <div class="timebar">
+    <span class="time-pill"><span class="jp">約20分</span></span>
+    <span class="time-note">15:05ごろ〜(時刻は目安)</span>
+  </div>
+  <div class="round-body">
+    <div class="col">
+      <h3>やること</h3>
+      <ul>
+        <li>自己紹介と一緒に、<b>普段のAI活用例</b>を一人ずつ共有</li>
+        <li>全員が話したら、気になる話を深掘り</li>
+        <li>「何を使った?」「どう頼んだ?」と<b>真似できるところまで</b>聞く</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>ポイント</h3>
+      <ul>
+        <li>仕事の成果も「日常がちょっと楽になった」もOK</li>
+        <li>自分の当たり前が、他の人の発見になる</li>
+        <li>困りごとは次のラウンドで。まずは<b>うまくいった話</b>を集める</li>
+      </ul>
+    </div>
+  </div>
+  <div class="goal">🎯 この時間のゴール ─ <span class="em">「自分も真似してみたい!」を最低1つ</span> 見つける</div>
+  <div class="notes">
+    <span>🎙 会話はマイク係のPCが自動で記録</span>
+    <span>📝 メモ係: 要点を <b># メモ-グループN</b> へ</span>
+    <span>⏱ 一人に偏らず全員が話す</span>
+  </div>
+  <div class="foot"><span>AI PRACTICE FORUM ~ AI活用のリアルを語る場 ~</span><span class="pageno">R1</span></div>
+</section>
+
+<!-- 3: ラウンド2 -->
+<section class="slide" data-step="3">
+  <div class="head">
+    <div class="tag">ROUND 2 / 3</div>
+    <div class="wordmark">AI PRACTICE FORUM</div>
+  </div>
+  <h1>私が感じているAIの壁</h1>
+  <div class="timebar">
+    <span class="time-pill"><span class="jp">約20分</span></span>
+    <span class="time-note">15:30ごろ〜(時刻は目安)</span>
+  </div>
+  <div class="round-body">
+    <div class="col">
+      <h3>やること</h3>
+      <ul>
+        <li><b>うまくいかなかったこと・困っていること</b>を一人1つずつ共有</li>
+        <li>「何をしたくて、どこでつまずいた?」をみんなで深掘り</li>
+        <li>試した方法や役立ちそうなアイデアがあれば共有</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>ポイント</h3>
+      <ul>
+        <li>「この仕事、AIで楽にできない?」という相談もOK</li>
+        <li>「自分も同じところで困ってる!」をぜひ伝える</li>
+        <li><b>この場で解決しきらなくてOK</b>。ヒント探しの時間</li>
+      </ul>
+    </div>
+  </div>
+  <div class="goal">🎯 この時間のゴール ─ お互いのつまずきを知り、<span class="em">次に試せそうなヒント</span> を探す</div>
+  <div class="notes">
+    <span>🎙 会話はマイク係のPCが自動で記録</span>
+    <span>📝 メモ係: 悩みとヒントを <b># メモ-グループN</b> へ</span>
+    <span>⏱ 一人に偏らず全員が話す</span>
+  </div>
+  <div class="foot"><span>AI PRACTICE FORUM ~ AI活用のリアルを語る場 ~</span><span class="pageno">R2</span></div>
+</section>
+
+<!-- 4: ラウンド3 -->
+<section class="slide" data-step="5">
+  <div class="head">
+    <div class="tag">ROUND 3 / 3</div>
+    <div class="wordmark">AI PRACTICE FORUM</div>
+  </div>
+  <h1>私のAI活用スモールステップを見つけよう</h1>
+  <div class="timebar">
+    <span class="time-pill"><span class="jp">約20分</span></span>
+    <span class="time-note">15:55ごろ〜(時刻は目安)</span>
+  </div>
+  <div class="round-body">
+    <div class="col">
+      <h3>やること</h3>
+      <ul>
+        <li>ここまでの話を踏まえて、<b>自分が明日から何をするか</b>を一人ずつ宣言</li>
+        <li>迷っている人は「この作業を楽にしたい」という相談からでOK</li>
+        <li>みんなで<b>実際に取りかかれる一歩</b>に具体化する</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>具体化の3点セット</h3>
+      <ul>
+        <li><b>どの作業</b>で使う?</li>
+        <li><b>最初に何</b>をする?</li>
+        <li><b>いつ</b>試す?</li>
+      </ul>
+    </div>
+  </div>
+  <div class="goal">🎯 最後に ─ アクションを <span class="em">1人1つ # メモ-グループN に投稿</span> + 全体共有の<span class="em">代表と内容</span>を決める</div>
+  <div class="notes">
+    <span>💡 大きな仕組みは不要。自分一人でできる小さなことでOK</span>
+    <span>⏱ 全員ぶんのスモールステップを考える</span>
+  </div>
+  <div class="foot"><span>AI PRACTICE FORUM ~ AI活用のリアルを語る場 ~</span><span class="pageno">R3</span></div>
+</section>
+
+<!-- 5: 全体共有 -->
+<section class="slide" data-step="6">
+  <div class="head">
+    <div class="tag">SHARING</div>
+    <div class="wordmark">AI PRACTICE FORUM</div>
+  </div>
+  <h1>全体共有</h1>
+  <div class="timebar">
+    <span class="time-pill"><span class="jp">各グループ 1分</span></span>
+    <span class="time-note">16:15ごろ〜(時刻は目安)</span>
+  </div>
+  <div class="round-body">
+    <div class="col">
+      <h3>やること</h3>
+      <ul>
+        <li>各グループの<b>代表1名</b>が、全体に向けて発表</li>
+        <li>内容: グループで出た話 + <b>印象に残ったスモールステップ</b></li>
+        <li>順番: <b>グループ1 → 6</b>(1グループ 1分)</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>皆さんへのお願い</h3>
+      <ul>
+        <li>🔇 <b>マイク係の方</b>: 発表中は <b>Discordのマイクをミュート</b></li>
+        <li>(発表の声を各テーブルのマイクが拾ってしまうため)</li>
+        <li>終わったらミュート解除をお願いします</li>
+      </ul>
+    </div>
+  </div>
+  <div class="goal">🎯 他のグループの発見を <span class="em">持ち帰る</span></div>
+  <div class="notes">
+    <span>📝 気になったアイデアは # メモ-グループN にメモしてOK</span>
+    <span>⏱ 1分経過で運営がベルを鳴らします</span>
+  </div>
+  <div class="foot"><span>AI PRACTICE FORUM ~ AI活用のリアルを語る場 ~</span><span class="pageno">SH</span></div>
+</section>
+
+<div class="nav-hint">← → キーでスライド切替 / 1〜6 で直接移動</div>
+
+<script>
+  // 進行ステッパー: 全体の流れと現在地をタイトル下に描画する
+  const FLOW = [
+    { label: "オープニング・役割決め" },
+    { label: "① AI活用のリアル" },
+    { label: "⏳", rest: true },
+    { label: "② AIの壁" },
+    { label: "⏳", rest: true },
+    { label: "③ スモールステップ" },
+    { label: "🎤 全体共有" },
+    { label: "締め" },
+  ];
+
+  const slides = [...document.querySelectorAll(".slide")];
+
+  for (const slide of slides) {
+    const now = Number(slide.dataset.step); // -1 = タイムテーブル(現在地なし)
+    if (now < 0) continue;
+    const bar = document.createElement("div");
+    bar.className = "stepper";
+    FLOW.forEach((step, i) => {
+      if (i > 0) {
+        const a = document.createElement("span");
+        a.className = "sep";
+        a.textContent = "›";
+        bar.appendChild(a);
+      }
+      const el = document.createElement("span");
+      el.className = "stp" + (step.rest ? " rest-chip" : "");
+      if (i < now) el.classList.add("done");
+      else if (i === now) el.classList.add("now");
+      el.textContent = step.label;
+      bar.appendChild(el);
+    });
+    slide.querySelector(".head").after(bar);
+  }
+
+  let idx = 0;
+  function show(i) {
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, j) => s.classList.toggle("active", j === idx));
+  }
+  addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") show(idx + 1);
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") show(idx - 1);
+    else if (/^[1-6]$/.test(e.key)) show(Number(e.key) - 1);
+  });
+</script>
+</body>
+</html>
