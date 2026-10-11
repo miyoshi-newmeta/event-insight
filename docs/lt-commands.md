@@ -18,6 +18,19 @@
 
 …以降、登壇者ごとに `number` を増やして同様に。
 
+### 当日の登壇順 (コピペ用・終わった瞬間に打つ)
+
+```
+/lt_marker action:終了 number:1 label:せっきー
+/lt_marker action:終了 number:2 label:友部さん
+/lt_marker action:終了 number:3 label:リョータ
+/lt_marker action:終了 number:4 label:石島さん
+/lt_marker action:終了 number:5 label:みよっしー
+/lt_marker action:終了 number:6 label:田島さん
+```
+
+※ 5人目は自分の登壇。降壇した直後に打つのを忘れない。
+
 - `label` は登壇者名+タイトルなど自由記述(「いま終わった人」の情報)
 - 画面には出ない(実行者にだけ確認が見える)。event-dbに仕切りが記録され、登壇者ごとに文字起こしを切り出せるようになる
 - 余裕があれば登壇開始時に `action:開始` も打つとより正確(なくてもOK)
