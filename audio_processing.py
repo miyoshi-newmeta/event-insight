@@ -258,6 +258,12 @@ class TranscribingSink(voice_recv.AudioSink):
                             stream.finalize_utterance(discard=discard)
                         buffer.utterance_active = False
                         buffer.utterance_ms = 0.0
+                    elif (not buffer.utterance_active
+                          and now - buffer.last_packet_time > Config.STREAM_IDLE_CLOSE):
+                        stream = self.streams.pop(user, None)
+                        if stream is not None and not stream.dead:
+                            logger.info(f"Closing idle Soniox stream for {user.display_name}")
+                            stream.close()
                 except Exception as e:
                     logger.error(f"Error streaming audio for {user}: {e}", exc_info=True)
 

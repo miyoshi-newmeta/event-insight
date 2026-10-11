@@ -41,6 +41,8 @@ class Config:
     # 発話区切り: パケット途切れがこの秒数続いたら発話終了。短すぎる発話は捨てる
     SILENCE_THRESHOLD = float(os.getenv("SILENCE_THRESHOLD", "0.5"))
     MIN_DURATION = float(os.getenv("MIN_DURATION", "1.0"))
+    # Soniox の同時接続枠を占有し続けないよう、この秒数だけ声が来ない話者の接続は閉じる
+    STREAM_IDLE_CLOSE = float(os.getenv("STREAM_IDLE_CLOSE", "60"))
 
     # --- フィラー除去 (OpenAI) ---
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
