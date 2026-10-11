@@ -116,6 +116,13 @@ class EventConfig:
         v = self.data.get("channels", {}).get(key)
         return int(v) if v else None
 
+    def live_transcript_channel_id(self, session: str) -> int | None:
+        """セッションに対応する文字起こしライブ投稿先 (lt / g1..g6)"""
+        if session == "lt":
+            return self.channel_id("live_transcript")
+        v = self.data.get("channels", {}).get("group_transcripts", {}).get(session)
+        return int(v) if v else None
+
     def memo_channel_ids(self) -> dict[int, str]:
         """channel_id -> group名 の逆引きマップ"""
         out = {}

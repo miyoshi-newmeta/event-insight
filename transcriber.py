@@ -170,11 +170,11 @@ def create_bot():
             logger.error(f"VCが見つからない: {vc_id}")
             return
 
+        # lt は #lt-文字起こし、g1..g6 は運営用プライベートch #文字起こし-グループN へライブ投稿
         live_channel = None
-        if SESSION == "lt":
-            live_id = bot.event_config.channel_id("live_transcript")
-            if live_id:
-                live_channel = bot.get_channel(live_id)
+        live_id = bot.event_config.live_transcript_channel_id(SESSION)
+        if live_id:
+            live_channel = bot.get_channel(live_id)
 
         vc = await connect_vc(channel)
         if vc:
@@ -195,7 +195,9 @@ def create_bot():
             await ctx.send("VC接続に失敗しました")
             return
         if bot.active_sink is None:
-            await start_transcribing(vc)
+            live_id = bot.event_config.live_transcript_channel_id(SESSION)
+            live_channel = bot.get_channel(live_id) if live_id else None
+            await start_transcribing(vc, live_channel)
         await ctx.send(f"[{SESSION}] {vc.channel.name} で文字起こし中")
 
     @bot.command()
