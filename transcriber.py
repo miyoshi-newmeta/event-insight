@@ -130,8 +130,10 @@ def create_bot():
             ))
 
             if live_channel:
+                # グループはテーブル中央のPC1台で全員の声を拾うため、発話者名ではなくグループ名義で流す
+                speaker = user.display_name if SESSION == "lt" else f"グループ{SESSION[1:]}"
                 try:
-                    await live_channel.send(f"**{user.display_name}**: {cleaned}")
+                    await live_channel.send(f"**{speaker}**: {cleaned}")
                 except Exception as e:
                     logger.error(f"ライブ投稿失敗: {e}")
 

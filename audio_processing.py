@@ -209,9 +209,16 @@ class TranscribingSink(voice_recv.AudioSink):
     def wants_opus(self) -> bool:
         return False  # PCM で受け取る
 
+    @staticmethod
+    def _is_muted(user) -> bool:
+        voice = getattr(user, "voice", None)
+        return bool(voice and (voice.self_mute or voice.mute))
+
     def write(self, user, data):
         try:
             if user is None or getattr(user, "bot", False):
+                return
+            if self._is_muted(user):
                 return
 
             if user not in self.user_buffers:
@@ -258,8 +265,9 @@ class TranscribingSink(voice_recv.AudioSink):
                             stream.finalize_utterance(discard=discard)
                         buffer.utterance_active = False
                         buffer.utterance_ms = 0.0
-                    elif (not buffer.utterance_active
-                          and now - buffer.last_packet_time > Config.STREAM_IDLE_CLOSE):
+                    elif not buffer.utterance_active and (
+                            self._is_muted(user)
+                            or now - buffer.last_packet_time > Config.STREAM_IDLE_CLOSE):
                         stream = self.streams.pop(user, None)
                         if stream is not None and not stream.dead:
                             logger.info(f"Closing idle Soniox stream for {user.display_name}")
